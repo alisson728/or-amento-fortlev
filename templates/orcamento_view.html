@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div><span class="eyebrow">Proposta #{{ orcamento.id }}</span><h2>{{ orcamento.nome }}</h2><p>{{ orcamento.created_at }} • {{ '%.2f'|format(orcamento.potencia or 0) }} kWp • Cliente: {{ orcamento.cliente_nome or '-' }}</p></div><div class="actions-inline"><a class="mini-btn neutral" href="{{ url_for('exportar_orcamento_pdf', orcamento_id=orcamento.id) }}">Exportar PDF</a><a class="mini-btn outline darker" href="{{ url_for('editar_orcamento', orcamento_id=orcamento.id) }}">Editar</a><a class="mini-btn success" href="{{ url_for('alterar_status', orcamento_id=orcamento.id, status='aprovado') }}">Aprovar</a><a class="mini-btn danger" href="{{ url_for('alterar_status', orcamento_id=orcamento.id, status='recusado') }}">Recusar</a><a class="mini-btn warning" href="{{ url_for('alterar_status', orcamento_id=orcamento.id, status='pendente') }}">Pendente</a></div></div>
+<div class="cards-grid dashboard-cards"><div class="stat-card glow-blue"><span>Status</span><strong class="status-inline {{ orcamento.status }}">{{ orcamento.status }}</strong></div><div class="stat-card glow-green"><span>Total itens</span><strong>{{ orcamento.total_itens|brl }}</strong></div><div class="stat-card glow-purple"><span>CAPEX usina</span><strong>{{ orcamento.capex_usina|brl }}</strong></div><div class="stat-card glow-blue"><span>Preço Wp</span><strong>{{ orcamento.preco_wp|brl4 }}</strong></div></div>
+<div class="panel meta-grid"><p>Criado por: <strong>{{ orcamento.created_by or '-' }}</strong> • Editado por: <strong>{{ orcamento.edited_by or '-' }}</strong></p><p>Criado em: <strong>{{ orcamento.created_at or '-' }}</strong> • Editado em: <strong>{{ orcamento.updated_at or '-' }}</strong></p><p>Tipo de UFV: <strong>{{ payload.get('dados_principais', {}).get('ufv_tipo', '-') }}</strong></p></div>
+
+<div class="view-groups-grid">
+  {% for group in material_groups %}
+  <section class="panel">
+    <div class="panel-head"><h3>{{ group.grupo }}</h3></div>
+    <div class="table-wrap"><table class="data-table compact-table"><thead><tr><th>Subgrupo</th><th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Total</th><th>R$/Wp</th></tr></thead><tbody>
+      {% for row in group.rows %}
+      <tr><td>{{ row.subgrupo }}</td><td>{{ row.item }}</td><td>{{ row.qtd }}</td><td>{{ row.valor|brl }}</td><td>{{ row.total|brl }}</td><td>{{ row.rwp|brl4 }}</td></tr>
+      {% endfor %}
+      <tr class="highlight-row"><td colspan="4">Total {{ group.grupo }}</td><td>{{ group.total|brl }}</td><td>{{ group.rwp|brl4 }}</td></tr>
+    </tbody></table></div>
+  </section>
+  {% endfor %}
+
+  <section class="panel">
+    <div class="panel-head"><h3>Kit Fotovoltaico</h3></div>
+    <div class="table-wrap"><table class="data-table compact-table"><thead><tr><th>Descrição</th><th>Valor</th><th>R$/Wp</th></tr></thead><tbody>
+      {% for row in kit_rows %}
+      <tr><td>{{ row.nome }}</td><td>{{ row.valor|brl }}</td><td>{{ row.rwp|brl4 }}</td></tr>
+      {% else %}
+      <tr><td colspan="3" class="empty-state">Nenhum item informado.</td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="panel view-span-2">
+    <div class="panel-head"><h3>Itens fixos</h3></div>
+    <div class="table-wrap"><table class="data-table compact-table"><thead><tr><th>Item</th><th>Valor</th><th>R$/Wp</th></tr></thead><tbody>
+      {% for row in fixed_rows %}
+      <tr><td>{{ row.nome }}</td><td>{{ row.valor|brl }}</td><td>{{ row.rwp|brl4 }}</td></tr>
+      {% else %}
+      <tr><td colspan="3" class="empty-state">Nenhum item fixo informado.</td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </section>
+</div>
+{% endblock %}

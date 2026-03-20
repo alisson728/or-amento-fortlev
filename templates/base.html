@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fortlev Orçamentos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-box">
+                <div class="brand-mark">F</div>
+                <div><h1>Fortlev</h1><span>Orçamentos Solares</span></div>
+            </div>
+            {% if current_user.id %}
+            <div class="user-chip"><strong>{{ current_user.username }}</strong><span>{{ 'Administrador' if current_user.role == 'admin' else 'Usuário' }}</span></div>
+            <nav class="menu">
+                <a href="{{ url_for('dashboard') }}" class="menu-link {% if request.path == '/' %}active{% endif %}">Dashboard</a>
+                <a href="{{ url_for('orcamento') }}" class="menu-link {% if request.path == '/orcamento' %}active{% endif %}">Novo orçamento</a>
+                <a href="{{ url_for('clientes') }}" class="menu-link {% if request.path.startswith('/clientes') %}active{% endif %}">Clientes</a>
+                <a href="{{ url_for('grupos') }}" class="menu-link {% if request.path.startswith('/grupos') %}active{% endif %}">Grupos</a>
+                <a href="{{ url_for('cabos') }}" class="menu-link {% if request.path.startswith('/cabos') %}active{% endif %}">Cabos</a>
+                {% if current_user.role == 'admin' %}<a href="{{ url_for('usuarios') }}" class="menu-link {% if request.path.startswith('/usuarios') %}active{% endif %}">Usuários</a>{% endif %}
+                <a href="{{ url_for('logout') }}" class="menu-link">Sair</a>
+            </nav>
+            {% endif %}
+        </aside>
+        <main class="page-content">
+            {% with messages = get_flashed_messages() %}{% if messages %}<div class="flash-stack">{% for message in messages %}<div class="flash-message">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

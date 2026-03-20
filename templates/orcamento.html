@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div><span class="eyebrow">Proposta</span><h2>Novo orçamento</h2><p></p></div></div>
+<form method="POST" id="budgetForm" action="{% if orcamento %}{{ url_for('editar_orcamento', orcamento_id=orcamento.id) }}{% else %}{{ url_for('orcamento') }}{% endif %}">
+<div class="cards-grid top-form-grid">
+<section class="panel form-panel"><div class="panel-head"><h3>Dados principais</h3></div><div class="form-grid two-columns">
+<div class="field"><label>Nome da usina</label><input type="text" name="nome" id="nome" placeholder="Ex.: UFV Fortlev" value="{{ orcamento.nome if orcamento else "" }}" required></div>
+<div class="field"><label>Cliente</label><select name="cliente_id"><option value="">Selecione</option>{% for cliente in clientes %}<option value="{{ cliente.id }}" {% if orcamento and orcamento.cliente_id == cliente.id %}selected{% endif %}>{{ cliente.nome }}</option>{% endfor %}</select></div>
+<div class="field"><label>Tipo de UFV</label><select id="ufvTipo">{% for tipo in ufv_types %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
+<div class="field"><label>Potência do módulo (Wp)</label><input type="number" step="0.01" min="0" id="potenciaModulo" placeholder="Ex.: 620"></div>
+<div class="field"><label>Quantidade de módulos</label><input type="number" step="1" min="0" id="quantidadeModulos" placeholder="Ex.: 970"></div>
+<div class="field"><label>Potência da usina (kWp)</label><input type="number" step="0.01" min="0" name="potencia" id="potencia" placeholder="Calculado automaticamente" value="{{ orcamento.potencia if orcamento else "" }}" readonly required></div>
+<div class="field"><label>Potência do inversor (kW)</label><input type="number" step="0.01" min="0" id="potenciaInversor" placeholder="Ex.: 100"></div>
+<div class="field"><label>Quantidade de inversores</label><input type="number" step="1" min="0" id="quantidadeInversores" placeholder="Ex.: 5"></div>
+<div class="field"><label>Potência total de inversores (kW)</label><input type="number" step="0.01" min="0" id="potenciaTotalInversores" placeholder="Calculado automaticamente" readonly></div>
+<div class="field"><label>Despesas Adm (%)</label><input type="number" step="0.01" min="0" id="taxaAdm" value="5.00"></div>
+<div class="field"><label>Impostos (%)</label><input type="number" step="0.01" min="0" id="taxaImpostos" value="8.00"></div>
+<div class="field"><label>Contingência (%)</label><input type="number" step="0.01" min="0" id="taxaContingencia" value="3.00"></div>
+<div class="field"><label>Margem (%)</label><input type="number" step="0.01" min="0" id="taxaMargem" value="12.00"></div>
+</div></section>
+<section class="panel summary-panel"><div class="panel-head"><h3>Resumo rápido</h3></div><div class="summary-stack">
+<div class="summary-line"><span>Total itens orçados</span><strong id="sumTotalItens">R$ 0,00</strong></div>
+<div class="summary-line"><span>Markup</span><strong id="sumMarkup">0,00%</strong></div>
+<div class="summary-line"><span>Serviço EPC</span><strong id="sumServicoEpc">R$ 0,00</strong></div>
+<div class="summary-line"><span>CAPEX usina</span><strong id="sumCapexUsina">R$ 0,00</strong></div>
+<div class="summary-line"><span>Preço Wp</span><strong id="sumPrecoWp">R$ 0,00</strong></div>
+</div></section></div>
+<section class="panel"><div class="panel-head"><div><h3>Equipamentos/Materiais</h3><p></p></div></div>
+<div class="group-buttons">{% for group in groups %}<button type="button" class="group-btn" data-group-index="{{ loop.index0 }}">{{ group.nome }}</button>{% endfor %}</div>
+<div class="selector-grid"><div class="field"><label>Grupo</label><input type="text" id="selectedGroupName" placeholder="Clique em um grupo" readonly></div>
+<div class="field"><label>Subgrupo</label><select id="subgrupoSelect"><option value="">Selecione</option></select></div>
+<div class="field grow"><label>Item</label><select id="itemSelect"><option value="">Selecione</option></select></div>
+<div class="field small"><label>Qtd</label><input type="number" id="itemQtd" min="1" step="1" value="1"></div>
+<div class="field small"><label>Valor unit.</label><input type="number" id="itemValor" min="0" step="0.01" value="0"></div>
+<div class="field action-field"><label>&nbsp;</label><button class="primary-btn" type="button" id="addMaterialBtn">Adicionar item</button></div></div>
+<div class="table-wrap mt-16"><table class="data-table" id="materiaisTable"><thead><tr><th>Grupo</th><th>Subgrupo</th><th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Valor total</th><th>R$/Wp</th><th>%</th><th></th></tr></thead><tbody></tbody></table></div></section>
+<section class="panel"><div class="panel-head"><div><h3>Kit Fotovoltaico</h3><p></p></div><button type="button" class="secondary-btn" id="addKitItemBtn">+ Novo item</button></div>
+<div class="table-wrap"><table class="data-table compact-table" id="kitTable"><thead><tr><th>Descrição</th><th>Valor total</th><th>R$/Wp</th><th>%</th><th></th></tr></thead><tbody></tbody></table></div></section>
+<section class="panel"><div class="panel-head"><div><h3>Itens Padrão</h3><p></p></div><button type="button" class="secondary-btn" id="addCustomFixed">+ Novo item</button></div>
+<div class="table-wrap"><table class="data-table compact-table" id="fixedTable"><thead><tr><th>Item</th><th>Valor total</th><th>R$/Wp</th><th>%</th><th></th></tr></thead><tbody>{% for item in fixed_items %}<tr class="fixed-row" data-label="{{ item }}"><td class="row-name">{{ item }}</td><td><div class="money-input compact-money"><span>R$</span><input type="number" class="fixed-value" step="0.01" min="0" value="0"></div></td><td class="fixed-rwp">R$ 0,0000</td><td class="fixed-percent">0,00%</td><td></td></tr>{% endfor %}</tbody></table></div></section>
+<div class="calc-grid"><section class="panel"><div class="panel-head"><h3>Detalhamento do CAPEX</h3></div><div class="table-wrap"><table class="data-table compact-table" id="capexTable"><thead><tr><th>Descrição</th><th>Valor</th><th>R$/Wp</th><th>%</th></tr></thead><tbody>
+<tr><td>Equipamentos/Materiais</td><td id="capexEquip">R$ 0,00</td><td id="capexEquipRwp">R$ 0,0000</td><td id="capexEquipPct">0,00%</td></tr>
+<tr><td>Kit Fotovoltaico</td><td id="capexKit">R$ 0,00</td><td id="capexKitRwp">R$ 0,0000</td><td id="capexKitPct">0,00%</td></tr>
+<tr><td>Serviço EPC</td><td id="capexServico">R$ 0,00</td><td id="capexServicoRwp">R$ 0,00</td><td id="capexServicoPct">0,00%</td></tr>
+<tr><td>Preço de Custo</td><td id="capexPrecoCusto">R$ 0,00</td><td id="capexPrecoCustoRwp">R$ 0,00</td><td id="capexPrecoCustoPct">0,00%</td></tr>
+<tr><td>Despesas Adm</td><td id="capexAdm">R$ 0,00</td><td id="capexAdmRwp">R$ 0,00</td><td id="capexAdmPct">0,00%</td></tr>
+<tr><td>Impostos</td><td id="capexImp">R$ 0,00</td><td id="capexImpRwp">R$ 0,00</td><td id="capexImpPct">0,00%</td></tr>
+<tr><td>Contingência</td><td id="capexCont">R$ 0,00</td><td id="capexContRwp">R$ 0,00</td><td id="capexContPct">0,00%</td></tr>
+<tr><td>Margem</td><td id="capexMargem">R$ 0,00</td><td id="capexMargemRwp">R$ 0,00</td><td id="capexMargemPct">0,00%</td></tr>
+<tr class="highlight-row"><td>CAPEX usina</td><td id="capexUsina">R$ 0,00</td><td id="capexUsinaRwp">R$ 0,00</td><td id="capexUsinaPct">100,00%</td></tr>
+</tbody></table></div></section>
+<section class="panel"><div class="panel-head"><h3>Premissas Financeiras</h3></div><div class="table-wrap"><table class="data-table compact-table"><tbody>
+<tr><td>Markup</td><td id="premMarkup">0,00%</td></tr><tr><td>MO por Wp</td><td id="premMoWp">R$ 0,0000</td></tr><tr><td>Margem Projeto</td><td id="premMargemProjeto">0,00%</td></tr><tr><td>Preço Wp</td><td id="premPrecoWp">R$ 0,00</td></tr><tr><td>CAPEX ADOTADO</td><td id="premCapexAdotado">R$ 0,00</td></tr>
+</tbody></table></div></section></div>
+<input type="hidden" name="payload_json" id="payloadJson"><input type="hidden" name="ufv_tipo" id="ufvTipoHidden"><input type="hidden" name="status" value="pendente"><input type="hidden" name="total_itens" id="inputTotalItens"><input type="hidden" name="capex_usina" id="inputCapexUsina"><input type="hidden" name="preco_wp" id="inputPrecoWp"><div class="footer-actions"><button type="submit" class="primary-btn large-btn">{% if orcamento %}Salvar alterações{% else %}Salvar proposta{% endif %}</button></div></form>
+<script>
+const EXISTING_PAYLOAD = {% if orcamento and orcamento.data_json %}{{ orcamento.data_json|safe }}{% else %}{}{% endif %};
+const GROUPS = {{ groups|tojson }};
+const UFV_TYPE_FIXED_ITEMS = {{ ufv_type_fixed_items|tojson }};
+const ufvTipoSelect = document.getElementById('ufvTipo');
+let selectedGroupIndex = null;
+let materialRows = [];
+const groupButtons = document.querySelectorAll('.group-btn');
+const selectedGroupName = document.getElementById('selectedGroupName');
+const subgrupoSelect = document.getElementById('subgrupoSelect');
+const itemSelect = document.getElementById('itemSelect');
+const itemQtd = document.getElementById('itemQtd');
+const itemValor = document.getElementById('itemValor');
+const materiaisTableBody = document.querySelector('#materiaisTable tbody');
+const fixedTableBody = document.querySelector('#fixedTable tbody');
+const kitTableBody = document.querySelector('#kitTable tbody');
+
+function brl(value){
+  return Number(value || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+}
+function brlPerWp(value){
+  return 'R$ ' + Number(value || 0).toLocaleString('pt-BR', {minimumFractionDigits:4, maximumFractionDigits:4});
+}
+function pct(value){
+  return Number(value || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+}
+function syncMainPowerFields(){
+  const moduloWp = parseFloat(document.getElementById('potenciaModulo').value) || 0;
+  const qtdModulos = parseFloat(document.getElementById('quantidadeModulos').value) || 0;
+  const invKw = parseFloat(document.getElementById('potenciaInversor').value) || 0;
+  const qtdInv = parseFloat(document.getElementById('quantidadeInversores').value) || 0;
+  const potenciaUsina = moduloWp > 0 && qtdModulos > 0 ? (moduloWp * qtdModulos) / 1000 : 0;
+  const potenciaInvTotal = invKw > 0 && qtdInv > 0 ? (invKw * qtdInv) : 0;
+  document.getElementById('potencia').value = potenciaUsina ? potenciaUsina.toFixed(2) : '';
+  document.getElementById('potenciaTotalInversores').value = potenciaInvTotal ? potenciaInvTotal.toFixed(2) : '';
+}
+function getPotenciaWp(){
+  syncMainPowerFields();
+  return (parseFloat(document.getElementById('potencia').value) || 0) * 1000;
+}
+function getRates(){
+  return {
+    adm:(parseFloat(document.getElementById('taxaAdm').value)||0)/100,
+    imp:(parseFloat(document.getElementById('taxaImpostos').value)||0)/100,
+    cont:(parseFloat(document.getElementById('taxaContingencia').value)||0)/100,
+    margem:(parseFloat(document.getElementById('taxaMargem').value)||0)/100,
+  };
+}
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function setGroup(index){
+  selectedGroupIndex = index;
+  const group = GROUPS[index];
+  selectedGroupName.value = group.nome;
+  groupButtons.forEach(btn => btn.classList.toggle('active', Number(btn.dataset.groupIndex) === index));
+  subgrupoSelect.innerHTML = '<option value="">Selecione</option>';
+  itemSelect.innerHTML = '<option value="">Selecione</option>';
+  group.subgrupos.forEach((sg, sgIndex) => {
+    const opt = document.createElement('option');
+    opt.value = sgIndex;
+    opt.textContent = sg.nome;
+    subgrupoSelect.appendChild(opt);
+  });
+}
+subgrupoSelect.addEventListener('change', () => {
+  itemSelect.innerHTML = '<option value="">Selecione</option>';
+  if (selectedGroupIndex === null || subgrupoSelect.value === '') return;
+  const items = GROUPS[selectedGroupIndex].subgrupos[subgrupoSelect.value].itens;
+  items.forEach((item, itemIndex) => {
+    const opt = document.createElement('option');
+    opt.value = itemIndex;
+    opt.textContent = item.nome;
+    opt.dataset.valor = item.valor;
+    itemSelect.appendChild(opt);
+  });
+});
+itemSelect.addEventListener('change', () => {
+  const option = itemSelect.selectedOptions[0];
+  itemValor.value = option ? (option.dataset.valor || 0) : 0;
+});
+groupButtons.forEach(btn => btn.addEventListener('click', () => setGroup(Number(btn.dataset.groupIndex))));
+
+
+function getCurrentFixedSnapshot(){
+  return [...document.querySelectorAll('#fixedTable tbody tr')].map(row => ({
+    nome: row.querySelector('.custom-name') ? row.querySelector('.custom-name').value.trim() : (row.dataset.label || ''),
+    valor: parseFloat(row.querySelector('.fixed-value')?.value) || 0,
+    custom: !!row.querySelector('.custom-name'),
+  })).filter(item => item.nome);
+}
+
+function renderDefaultFixedRows(tipo, preservedRows = []){
+  const defaults = UFV_TYPE_FIXED_ITEMS[tipo] || UFV_TYPE_FIXED_ITEMS['UFV SOLO'] || [];
+  const preservedMap = new Map((preservedRows || []).map(item => [item.nome, item]));
+  fixedTableBody.innerHTML = '';
+  defaults.forEach(item => {
+    const saved = preservedMap.get(item);
+    const tr = document.createElement('tr');
+    tr.className = 'fixed-row';
+    tr.dataset.label = item;
+    tr.innerHTML = `<td class="row-name">${escapeHtml(item)}</td><td><div class="money-input compact-money"><span>R$</span><input type="number" class="fixed-value" step="0.01" min="0" value="${Number(saved?.valor || 0)}"></div></td><td class="fixed-rwp">R$ 0,0000</td><td class="fixed-percent">0,00%</td><td></td>`;
+    fixedTableBody.appendChild(tr);
+  });
+  preservedRows.filter(item => item.custom || !defaults.includes(item.nome)).forEach(item => {
+    createCustomFixedRow(item.nome, item.valor);
+  });
+  bindFixedValueEvents();
+}
+
+function bindFixedValueEvents(){
+  document.querySelectorAll('.fixed-value').forEach(el => {
+    if (el.dataset.bound === '1') return;
+    el.dataset.bound = '1';
+    el.addEventListener('input', updateAll);
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); updateAll(); } });
+  });
+}
+
+function applyUfvTypeDefaults(tipo, options = {}){
+  const selectedType = UFV_TYPE_FIXED_ITEMS[tipo] ? tipo : 'UFV SOLO';
+  ufvTipoSelect.value = selectedType;
+  const preserveCurrentValues = options.preserveCurrentValues !== false;
+  const preservedRows = preserveCurrentValues ? getCurrentFixedSnapshot() : [];
+  renderDefaultFixedRows(selectedType, preservedRows);
+  updateAll();
+}
+
+ufvTipoSelect.addEventListener('change', () => applyUfvTypeDefaults(ufvTipoSelect.value, { preserveCurrentValues: false }));
+
+function createCustomFixedRow(name='', value=0){
+  const tr = document.createElement('tr');
+  tr.className = 'fixed-row custom-fixed';
+  tr.innerHTML = `<td class="row-name"><input type="text" class="custom-name styled-inline-input" placeholder="Novo item" value="${escapeHtml(name)}"></td><td><div class="money-input compact-money"><span>R$</span><input type="number" class="fixed-value" step="0.01" min="0" value="${Number(value || 0)}"></div></td><td class="fixed-rwp">R$ 0,0000</td><td class="fixed-percent">0,00%</td><td><button type="button" class="icon-btn">✕</button></td>`;
+  fixedTableBody.appendChild(tr);
+  tr.querySelector('.fixed-value').addEventListener('input', updateAll);
+  tr.querySelector('.fixed-value').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); updateAll(); } });
+  tr.querySelector('.custom-name').addEventListener('input', updateAll);
+  tr.querySelector('.icon-btn').addEventListener('click', () => { tr.remove(); updateAll(); });
+  return tr;
+}
+
+function fixedRowsData(){
+  return [...document.querySelectorAll('#fixedTable tbody tr')].map(row => ({
+    nome: row.querySelector('.custom-name') ? row.querySelector('.custom-name').value.trim() : row.dataset.label,
+    valor: parseFloat(row.querySelector('.fixed-value').value) || 0,
+    row,
+  })).filter(item => item.nome);
+}
+
+function createKitRow(name='', value=0){
+  const tr = document.createElement('tr');
+  tr.className = 'kit-row custom-kit';
+  tr.innerHTML = `<td class="row-name"><input type="text" class="kit-name styled-inline-input" placeholder="Novo item" value="${escapeHtml(name)}"></td><td><div class="money-input compact-money"><span>R$</span><input type="number" class="kit-value" step="0.01" min="0" value="${Number(value || 0)}"></div></td><td class="kit-rwp">R$ 0,0000</td><td class="kit-percent">0,00%</td><td><button type="button" class="icon-btn">✕</button></td>`;
+  kitTableBody.appendChild(tr);
+  tr.querySelector('.kit-value').addEventListener('input', updateAll);
+  tr.querySelector('.kit-value').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); updateAll(); } });
+  tr.querySelector('.kit-name').addEventListener('input', updateAll);
+  tr.querySelector('.icon-btn').addEventListener('click', () => { tr.remove(); updateAll(); });
+  return tr;
+}
+
+function kitRowsData(){
+  return [...document.querySelectorAll('#kitTable tbody tr')].map(row => ({
+    nome: row.querySelector('.kit-name')?.value.trim() || '',
+    valor: parseFloat(row.querySelector('.kit-value').value) || 0,
+    row,
+  })).filter(item => item.nome);
+}
+
+function computeCapexValues(){
+  const rates = getRates();
+  const equipamentosMateriais = materialRows.reduce((acc, row) => acc + (row.qtd * row.valor), 0);
+  const kitRows = kitRowsData();
+  const kitFotovoltaicoTotal = kitRows.reduce((acc, row) => acc + row.valor, 0);
+  const fixos = fixedRowsData();
+  const outrosFixos = fixos.reduce((acc, row) => acc + row.valor, 0);
+  const precoCusto = equipamentosMateriais + outrosFixos;
+  const totalItens = precoCusto + kitFotovoltaicoTotal;
+  const rateSum = rates.adm + rates.imp + rates.cont + rates.margem;
+  const markup = (1 - rateSum) > 0 ? 1 / (1 - rateSum) : 0;
+  const servicoEpc = markup * precoCusto;
+  const despesasAdm = servicoEpc * rates.adm;
+  const impostos = servicoEpc * rates.imp;
+  const contingencia = servicoEpc * rates.cont;
+  const margem = servicoEpc * rates.margem;
+  const capexUsina = kitFotovoltaicoTotal + servicoEpc;
+  const potenciaWp = getPotenciaWp();
+  const precoWp = potenciaWp > 0 ? capexUsina / potenciaWp : 0;
+  const moCivil = fixos.find(i => i.nome.toLowerCase() === 'mão de obra civil')?.valor || 0;
+  const moEletrica = fixos.find(i => i.nome.toLowerCase() === 'mão de obra elétrica')?.valor || 0;
+  const moPorWp = potenciaWp > 0 ? (moCivil + moEletrica) / potenciaWp : 0;
+  const margemProjetoPct = capexUsina > 0 ? (margem / capexUsina) * 100 : 0;
+  return { equipamentosMateriais, kitFotovoltaicoTotal, outrosFixos, precoCusto, totalItens, markup, servicoEpc, despesasAdm, impostos, contingencia, margem, capexUsina, precoWp, moPorWp, margemProjetoPct };
+}
+
+function updateFixedTable(calc){
+  const potenciaWp = getPotenciaWp();
+  kitRowsData().forEach(item => {
+    const rwp = potenciaWp > 0 ? item.valor / potenciaWp : 0;
+    const percent = calc.capexUsina > 0 ? (item.valor / calc.capexUsina) * 100 : 0;
+    item.row.querySelector('.kit-rwp').textContent = brlPerWp(rwp);
+    item.row.querySelector('.kit-percent').textContent = pct(percent);
+  });
+  fixedRowsData().forEach(item => {
+    const rwp = potenciaWp > 0 ? item.valor / potenciaWp : 0;
+    const percent = calc.capexUsina > 0 ? (item.valor / calc.capexUsina) * 100 : 0;
+    item.row.querySelector('.fixed-rwp').textContent = brlPerWp(rwp);
+    item.row.querySelector('.fixed-percent').textContent = pct(percent);
+  });
+}
+
+function fillCapexRow(prefix, value, capexUsina){
+  const potenciaWp = getPotenciaWp();
+  const rwp = potenciaWp > 0 ? value / potenciaWp : 0;
+  const percent = capexUsina > 0 ? (value / capexUsina) * 100 : 0;
+  document.getElementById(prefix).textContent = brl(value);
+  document.getElementById(prefix + 'Rwp').textContent = brlPerWp(rwp);
+  const pctElement = document.getElementById(prefix + 'Pct');
+  if (pctElement) pctElement.textContent = prefix === 'capexUsina' ? '100,00%' : pct(percent);
+}
+
+function updateAll(){
+  const calc = computeCapexValues();
+  updateFixedTable(calc);
+  document.getElementById('sumTotalItens').textContent = brl(calc.totalItens);
+  document.getElementById('sumMarkup').textContent = pct(calc.markup * 100);
+  document.getElementById('sumServicoEpc').textContent = brl(calc.servicoEpc);
+  document.getElementById('sumCapexUsina').textContent = brl(calc.capexUsina);
+  document.getElementById('sumPrecoWp').textContent = brlPerWp(calc.precoWp);
+
+  fillCapexRow('capexEquip', calc.equipamentosMateriais, calc.capexUsina);
+  fillCapexRow('capexKit', calc.kitFotovoltaicoTotal, calc.capexUsina);
+  fillCapexRow('capexServico', calc.servicoEpc, calc.capexUsina);
+  fillCapexRow('capexPrecoCusto', calc.precoCusto, calc.capexUsina);
+  fillCapexRow('capexAdm', calc.despesasAdm, calc.capexUsina);
+  fillCapexRow('capexImp', calc.impostos, calc.capexUsina);
+  fillCapexRow('capexCont', calc.contingencia, calc.capexUsina);
+  fillCapexRow('capexMargem', calc.margem, calc.capexUsina);
+  fillCapexRow('capexUsina', calc.capexUsina, calc.capexUsina || 1);
+
+  document.getElementById('premMarkup').textContent = pct(calc.markup * 100);
+  document.getElementById('premMoWp').textContent = brlPerWp(calc.moPorWp);
+  document.getElementById('premMargemProjeto').textContent = pct(calc.margemProjetoPct);
+  document.getElementById('premPrecoWp').textContent = brlPerWp(calc.precoWp);
+  document.getElementById('premCapexAdotado').textContent = brl(calc.capexUsina);
+
+  document.getElementById('inputTotalItens').value = calc.totalItens.toFixed(2);
+  document.getElementById('inputCapexUsina').value = calc.capexUsina.toFixed(2);
+  document.getElementById('inputPrecoWp').value = calc.precoWp.toFixed(6);
+  document.getElementById('ufvTipoHidden').value = ufvTipoSelect.value || 'UFV SOLO';
+
+  const payload = {
+    materiais: materialRows.map(row => ({...row, total: row.qtd * row.valor})),
+    kit_fotovoltaico: kitRowsData().map(item => ({nome: item.nome, valor: item.valor})),
+    fixos: fixedRowsData().map(item => ({nome: item.nome, valor: item.valor})),
+    taxas: {
+      adm: parseFloat(document.getElementById('taxaAdm').value) || 0,
+      impostos: parseFloat(document.getElementById('taxaImpostos').value) || 0,
+      contingencia: parseFloat(document.getElementById('taxaContingencia').value) || 0,
+      margem: parseFloat(document.getElementById('taxaMargem').value) || 0,
+    },
+    dados_principais: {
+      potencia_modulo: parseFloat(document.getElementById('potenciaModulo').value) || 0,
+      quantidade_modulos: parseFloat(document.getElementById('quantidadeModulos').value) || 0,
+      potencia_inversor_kw: parseFloat(document.getElementById('potenciaInversor').value) || 0,
+      quantidade_inversores: parseFloat(document.getElementById('quantidadeInversores').value) || 0,
+      ufv_tipo: ufvTipoSelect.value || 'UFV SOLO',
+      potencia_total_inversores_kw: parseFloat(document.getElementById('potenciaTotalInversores').value) || 0,
+    },
+    calculos: calc,
+  };
+  document.getElementById('payloadJson').value = JSON.stringify(payload);
+}
+
+function renderMaterialRows(){
+  const capexPreview = computeCapexValues();
+  materiaisTableBody.innerHTML = '';
+  const potenciaWp = getPotenciaWp();
+  materialRows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    const total = row.qtd * row.valor;
+    const rwp = potenciaWp > 0 ? total / potenciaWp : 0;
+    const perc = capexPreview.capexUsina > 0 ? (total / capexPreview.capexUsina) * 100 : 0;
+    tr.innerHTML = `<td>${escapeHtml(row.grupo)}</td><td>${escapeHtml(row.subgrupo)}</td><td>${escapeHtml(row.item)}</td><td>${row.qtd}</td><td>${brl(row.valor)}</td><td>${brl(total)}</td><td>${brlPerWp(rwp)}</td><td>${pct(perc)}</td><td><button type="button" class="icon-btn" onclick="removeMaterial(${index})">✕</button></td>`;
+    materiaisTableBody.appendChild(tr);
+  });
+  updateAll();
+}
+
+function removeMaterial(index){
+  materialRows.splice(index, 1);
+  renderMaterialRows();
+}
+window.removeMaterial = removeMaterial;
+
+document.getElementById('addMaterialBtn').addEventListener('click', () => {
+  if (selectedGroupIndex === null || subgrupoSelect.value === '' || itemSelect.value === '') {
+    alert('Selecione grupo, subgrupo e item.');
+    return;
+  }
+  const group = GROUPS[selectedGroupIndex];
+  const subgrupo = group.subgrupos[subgrupoSelect.value];
+  const item = subgrupo.itens[itemSelect.value];
+  const qtd = parseFloat(itemQtd.value) || 1;
+  const valor = parseFloat(itemValor.value) || 0;
+  const existing = materialRows.find(r => r.grupo === group.nome && r.subgrupo === subgrupo.nome && r.item === item.nome && Number(r.valor) === Number(valor));
+  if (existing) {
+    existing.qtd += qtd;
+  } else {
+    materialRows.push({ grupo: group.nome, subgrupo: subgrupo.nome, item: item.nome, qtd, valor });
+  }
+  renderMaterialRows();
+});
+
+document.getElementById('addCustomFixed').addEventListener('click', () => {
+  createCustomFixedRow();
+  updateAll();
+});
+document.getElementById('addKitItemBtn').addEventListener('click', () => {
+  createKitRow();
+  updateAll();
+});
+
+document.querySelectorAll('#potenciaModulo, #quantidadeModulos, #potenciaInversor, #quantidadeInversores, #taxaAdm, #taxaImpostos, #taxaContingencia, #taxaMargem').forEach(el => {
+  el.addEventListener('input', updateAll);
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); updateAll(); } });
+});
+bindFixedValueEvents();
+
+if (EXISTING_PAYLOAD && Object.keys(EXISTING_PAYLOAD).length) {
+  materialRows = (EXISTING_PAYLOAD.materiais || []).map(row => ({
+    grupo: row.grupo,
+    subgrupo: row.subgrupo,
+    item: row.item,
+    qtd: Number(row.qtd) || 1,
+    valor: Number(row.valor) || 0,
+  }));
+  const ufvTipoSalvo = EXISTING_PAYLOAD.dados_principais?.ufv_tipo || 'UFV SOLO';
+  applyUfvTypeDefaults(ufvTipoSalvo, { preserveCurrentValues: false });
+  (EXISTING_PAYLOAD.fixos || []).forEach(saved => {
+    const rows = [...document.querySelectorAll('#fixedTable tbody tr')];
+    const match = rows.find(r => (r.dataset.label || '') === saved.nome);
+    if (match) {
+      match.querySelector('.fixed-value').value = Number(saved.valor || 0);
+    } else {
+      createCustomFixedRow(saved.nome, saved.valor);
+    }
+  });
+  if (EXISTING_PAYLOAD.kit_fotovoltaico && EXISTING_PAYLOAD.kit_fotovoltaico.length) {
+    (EXISTING_PAYLOAD.kit_fotovoltaico || []).forEach(saved => {
+      createKitRow(saved.nome, saved.valor);
+    });
+  } else if (Number(EXISTING_PAYLOAD.equipamentos_materiais || 0) > 0) {
+    createKitRow('Kit Fotovoltaico', Number(EXISTING_PAYLOAD.equipamentos_materiais || 0));
+  }
+  if (EXISTING_PAYLOAD.dados_principais) {
+    document.getElementById('potenciaModulo').value = EXISTING_PAYLOAD.dados_principais.potencia_modulo || '';
+    document.getElementById('quantidadeModulos').value = EXISTING_PAYLOAD.dados_principais.quantidade_modulos || '';
+    document.getElementById('potenciaInversor').value = EXISTING_PAYLOAD.dados_principais.potencia_inversor_kw || '';
+    document.getElementById('quantidadeInversores').value = EXISTING_PAYLOAD.dados_principais.quantidade_inversores || '';
+    document.getElementById('potenciaTotalInversores').value = EXISTING_PAYLOAD.dados_principais.potencia_total_inversores_kw || '';
+    ufvTipoSelect.value = EXISTING_PAYLOAD.dados_principais.ufv_tipo || 'UFV SOLO';
+  }
+  if (EXISTING_PAYLOAD.taxas) {
+    document.getElementById('taxaAdm').value = EXISTING_PAYLOAD.taxas.adm || 0;
+    document.getElementById('taxaImpostos').value = EXISTING_PAYLOAD.taxas.impostos || 0;
+    document.getElementById('taxaContingencia').value = EXISTING_PAYLOAD.taxas.contingencia || 0;
+    document.getElementById('taxaMargem').value = EXISTING_PAYLOAD.taxas.margem || 0;
+  }
+  renderMaterialRows();
+} else {
+  applyUfvTypeDefaults('UFV SOLO', { preserveCurrentValues: false });
+}
+syncMainPowerFields();
+updateAll();
+</script>
+{% endblock %}

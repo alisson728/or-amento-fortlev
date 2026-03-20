@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <span class="eyebrow">Ferramenta</span>
+    <h2>Dimensionamento de cabos</h2>
+    <p></p>
+  </div>
+</div>
+{% set metodos = [
+  ('A1','A1 - condutores isolados em eletroduto embutido em parede termicamente isolante','Situação mais crítica. Dissipação térmica menor.'),
+  ('A2','A2 - cabo multipolar em eletroduto embutido em parede termicamente isolante','Aplicação embutida com cabo multipolar.'),
+  ('B1','B1 - condutores isolados em eletroduto aparente ou embutido','Muito usado em infraestrutura predial e industrial.'),
+  ('B2','B2 - cabo multipolar em eletroduto aparente ou embutido','Boa referência para cabos multipolares.'),
+  ('C','C - diretamente fixado em parede, bandeja ou perfilado ventilado','Melhor dissipação. Corrente admissível maior.'),
+  ('D','D - enterrado em eletroduto ou diretamente no solo','Considera influência térmica do solo.'),
+  ('E','E - cabo ao ar livre em bandeja/perfilado perfurado','Excelente ventilação e troca térmica.'),
+  ('F','F - cabos unipolares ao ar livre, espaçados','Uma das melhores dissipações térmicas.')
+] %}
+<div class="calc-grid cable-layout">
+  <section class="panel cable-panel-main">
+    <div class="panel-head"><div><h3>Novo dimensionamento</h3><p>Preencha os dados principais. O cálculo considera capacidade de condução + queda de tensão.</p></div></div>
+    <form method="POST" class="form-grid two-columns cable-form" id="cableForm">
+      <div class="field"><label>Título</label><input name="titulo" placeholder="Ex.: Cabo inversor principal"></div>
+      <div class="field"><label>Tipo de corrente</label><select name="modo_corrente" id="modo_corrente"><option value="monofasico">Monofásico AC</option><option value="trifasico" selected>Trifásico AC</option><option value="cc">Corrente contínua</option></select></div>
+      <div class="field"><label>Tensão (V)</label><input type="number" step="0.01" name="tensao" id="tensao" required></div>
+      <div class="field"><label>Corrente (A)</label><input type="number" step="0.01" name="corrente" id="corrente" required></div>
+      <div class="field"><label>Carga opcional</label><div class="inline-duo"><input type="number" step="0.01" name="carga" id="carga" placeholder="Ex.: 100000"><select name="unidade_carga" id="unidade_carga"><option>W</option><option>kW</option></select></div><small>Se informar carga, o sistema sugere a corrente automaticamente.</small></div>
+      <div class="field"><label>Fator de potência</label><input type="number" step="0.01" min="0" max="1" name="fator_potencia" id="fator_potencia" value="0.90"></div>
+      <div class="field"><label>Comprimento / distância (m)</label><input type="number" step="0.01" name="distancia" id="distancia" required></div>
+      <div class="field"><label>Queda de tensão máxima (%)</label><input type="number" step="0.01" min="0" name="queda_max" id="queda_max" value="4"></div>
+      <div class="field"><label>Material</label><select name="material" id="material"><option value="cobre">Cobre</option><option value="aluminio">Alumínio</option></select></div>
+      <div class="field"><label>Isolação</label><select name="isolacao" id="isolacao"><option value="PVC">PVC</option><option value="XLPE">XLPE / EPR</option></select></div>
+      <div class="field"><label>Método de instalação</label><select name="metodo_instalacao" id="metodo_instalacao">{% for codigo, titulo, texto in metodos %}<option value="{{ codigo }}" data-desc="{{ texto }}">{{ titulo }}</option>{% endfor %}</select><input type="hidden" name="metodo_desc" id="metodo_desc"><small id="metodo_help">{{ metodos[0][2] }}</small></div>
+      <div class="field"><label>Temperatura ambiente (°C)</label><input type="number" step="0.1" name="temperatura" id="temperatura" value="30"></div>
+      <div class="field"><label>Circuitos no mesmo eletroduto / agrupamento</label><select name="circuitos" id="circuitos"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 ou mais</option></select></div>
+      <div class="field"><label>Tamanho máximo permitido (mm²)</label><select name="secao_max" id="secao_max"><option>16</option><option>25</option><option>35</option><option>50</option><option>70</option><option>95</option><option>120</option><option>150</option><option>185</option><option>240</option><option>300</option><option selected>1000</option></select></div>
+      <div class="field field-switch"><label>Todos cabos paralelos em único conduto</label><label class="toggle"><input type="checkbox" name="paralelos_unico_conduto" id="paralelos_unico_conduto"><span></span></label></div>
+      <div class="field field-switch"><label>Permitir seções menores que 1,5 mm²</label><label class="toggle"><input type="checkbox" name="permite_secao_menor" id="permite_secao_menor"><span></span></label></div>
+      <div class="field"><label>Seção sugerida (mm²)</label><input type="number" step="0.01" name="secao" id="secao" readonly></div>
+      <div class="field full-span"><label>Observações</label><input type="text" name="observacoes" placeholder="Observações do cálculo ou da instalação"></div>
+      <div class="panel calc-result-card full-span">
+        <div class="result-grid">
+          <div><span>Corrente considerada</span><strong id="outCorrente">0,00 A</strong></div>
+          <div><span>Seção por ampacidade</span><strong id="outAmpacidade">0 mm²</strong></div>
+          <div><span>Seção por queda</span><strong id="outQueda">0 mm²</strong></div>
+          <div><span>Queda estimada</span><strong id="outQuedaPct">0,00%</strong></div><div><span>Cabos por fase</span><strong id="outParalelos">1 x</strong></div>
+        </div>
+      </div>
+      <div class="footer-actions full-span"><button class="primary-btn">Salvar cálculo</button></div>
+    </form>
+  </section>
+  <section class="panel cable-panel-side">
+    <div class="panel-head"><div><h3>Métodos e referências</h3><p>Base prática para escolha do modo de instalação.</p></div></div>
+    <div class="method-list">
+      {% for codigo, titulo, texto in metodos %}
+      <div class="method-card"><strong>{{ codigo }}</strong><div><h4>{{ titulo }}</h4><p>{{ texto }}</p></div></div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+<section class="panel mt-16">
+  <div class="panel-head"><div><h3>Histórico</h3><p>Cálculos já salvos no sistema.</p></div></div>
+  <div class="table-wrap"><table class="data-table compact-table"><thead><tr><th>Título</th><th>Método</th><th>Material</th><th>Tensão</th><th>Corrente</th><th>Distância</th><th>Seção</th><th>Usuário</th><th></th></tr></thead><tbody>{% for c in cabos %}<tr><td>{{ c.titulo }}</td><td>{{ c.metodo_instalacao or '-' }}</td><td>{{ c.material }}</td><td>{{ c.tensao }}</td><td>{{ c.corrente }}</td><td>{{ c.distancia }}</td><td>{{ c.secao }}</td><td>{{ c.created_by or '-' }}</td><td><a class="mini-btn danger" href="{{ url_for('cabo_delete', cabo_id=c.id) }}" onclick="return confirm('Excluir cálculo?')">Excluir</a></td></tr>{% else %}<tr><td colspan="9" class="empty-state">Nenhum cálculo salvo.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<script>
+const ampTable = {
+  cobre: {A1:{1.5:15,2.5:19,4:25,6:32,10:43,16:57,25:76,35:94,50:114,70:146,95:175,120:202,150:230,185:261,240:303},A2:{1.5:14,2.5:18,4:24,6:31,10:42,16:56,25:73,35:90,50:110,70:141,95:169,120:194,150:221,185:250,240:290},B1:{1.5:17.5,2.5:24,4:32,6:41,10:57,16:76,25:101,35:125,50:151,70:192,95:232,120:269,150:309,185:353,240:415},B2:{1.5:16.5,2.5:23,4:30,6:39,10:54,16:73,25:96,35:119,50:144,70:184,95:223,120:259,150:299,185:341,240:401},C:{1.5:19.5,2.5:27,4:36,6:46,10:63,16:85,25:112,35:138,50:168,70:213,95:258,120:299,150:344,185:392,240:461},D:{1.5:23,2.5:31,4:42,6:54,10:75,16:100,25:131,35:162,50:192,70:246,95:296,120:341,150:387,185:436,240:507},E:{1.5:21,2.5:29,4:39,6:50,10:69,16:91,25:119,35:147,50:179,70:228,95:275,120:318,150:365,185:414,240:485},F:{1.5:24,2.5:33,4:45,6:57,10:78,16:104,25:137,35:169,50:200,70:255,95:307,120:354,150:404,185:456,240:530}},
+  aluminio: {A1:{16:44,25:59,35:73,50:89,70:114,95:137,120:157,150:179,185:203,240:236},A2:{16:43,25:57,35:71,50:86,70:110,95:132,120:151,150:172,185:195,240:226},B1:{16:59,25:77,35:96,50:116,70:148,95:179,120:208,150:237,185:268,240:312},B2:{16:56,25:74,35:91,50:110,70:140,95:170,120:197,150:225,185:255,240:297},C:{16:66,25:86,35:106,50:129,70:164,95:198,120:230,150:262,185:297,240:346},D:{16:73,25:96,35:119,50:145,70:185,95:224,120:258,150:294,185:332,240:387},E:{16:71,25:92,35:114,50:138,70:176,95:213,120:246,150:280,185:317,240:370},F:{16:77,25:101,35:125,50:151,70:194,95:233,120:270,150:308,185:347,240:404}}
+};
+const sections = [1.5,2.5,4,6,10,16,25,35,50,70,95,120,150,185,240,300];
+const tempFactor = temp => temp <= 30 ? 1 : temp <= 35 ? 0.94 : temp <= 40 ? 0.87 : temp <= 45 ? 0.79 : temp <= 50 ? 0.71 : 0.61;
+const circuitFactor = c => c <= 1 ? 1 : c == 2 ? 0.8 : c == 3 ? 0.7 : c == 4 ? 0.65 : 0.6;
+function formatPt(v,d=2){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function updateMethodText(){ const sel = document.getElementById('metodo_instalacao'); const opt = sel.selectedOptions[0]; document.getElementById('metodo_help').textContent = opt?.dataset.desc || ''; document.getElementById('metodo_desc').value = opt?.dataset.desc || ''; }
+function suggestCurrentFromLoad(){ const carga = parseFloat(document.getElementById('carga').value)||0; const tensao = parseFloat(document.getElementById('tensao').value)||0; const fp = parseFloat(document.getElementById('fator_potencia').value)||0.9; if(!carga || !tensao) return; const unidade = document.getElementById('unidade_carga').value; const modo = document.getElementById('modo_corrente').value; let watts = unidade === 'kW' ? carga*1000 : carga; let corrente = 0; if (modo === 'trifasico') corrente = watts / (1.732 * tensao * fp); else corrente = watts / (tensao * fp); if (corrente > 0) document.getElementById('corrente').value = corrente.toFixed(2); }
+function calcCable(){ updateMethodText(); const material = document.getElementById('material').value; const metodo = document.getElementById('metodo_instalacao').value; const temperatura = parseFloat(document.getElementById('temperatura').value)||30; const circuitos = parseFloat(document.getElementById('circuitos').value)||1; const maxSecao = parseFloat(document.getElementById('secao_max').value)||1000; const permitirMenor = document.getElementById('permite_secao_menor').checked; const tensao = parseFloat(document.getElementById('tensao').value)||0; const corrente = parseFloat(document.getElementById('corrente').value)||0; const distancia = parseFloat(document.getElementById('distancia').value)||0; const quedaMax = parseFloat(document.getElementById('queda_max').value)||4; const modo = document.getElementById('modo_corrente').value; const base = (ampTable[material]||{})[metodo] || (ampTable[material]||{}).B1; const tFactor = tempFactor(temperatura); const cFactor = circuitFactor(circuitos); const minSection = permitirMenor ? 1.5 : (modo === 'cc' ? 2.5 : 1.5); const resist = material === 'aluminio' ? 0.0282 : 0.0172; const availableSections = sections.filter(s => s >= minSection && s <= maxSecao && base[s]);
+ if (!availableSections.length){ document.getElementById('secao').value = ''; return; }
+ function quedaPercent(secaoTotal){ if (!tensao || !corrente || !distancia || !secaoTotal) return 0; let dv = modo === 'trifasico' ? (1.732 * resist * distancia * corrente) / secaoTotal : (2 * resist * distancia * corrente) / secaoTotal; return (dv / tensao) * 100; }
+ let secAmp = 0; for (const s of availableSections){ const cap = base[s] * tFactor * cFactor; if (cap >= corrente){ secAmp = s; break; } }
+ if (!secAmp){ secAmp = availableSections[availableSections.length-1]; }
+ let secQueda = availableSections[0]; let quedaPct = quedaPercent(secQueda); for (const s of availableSections){ const pct = quedaPercent(s); secQueda = s; quedaPct = pct; if (pct <= quedaMax){ break; } }
+ let finalSec = Math.max(secAmp, secQueda); let paralelos = 1;
+ if (finalSec > maxSecao || !availableSections.includes(finalSec)){
+   finalSec = availableSections[availableSections.length-1];
+ }
+ let capacidadeFinal = (base[finalSec]||0) * tFactor * cFactor;
+ let quedaFinal = quedaPercent(finalSec);
+ while ((capacidadeFinal * paralelos < corrente || quedaFinal / paralelos > quedaMax) && paralelos < 12){ paralelos += 1; }
+ document.getElementById('secao').value = finalSec;
+ document.getElementById('outCorrente').textContent = formatPt(corrente,2) + ' A';
+ document.getElementById('outAmpacidade').textContent = formatPt(secAmp,0) + ' mm²';
+ document.getElementById('outQueda').textContent = formatPt(secQueda,0) + ' mm²';
+ document.getElementById('outQuedaPct').textContent = formatPt(paralelos > 1 ? (quedaFinal / paralelos) : quedaFinal,2) + '%';
+ document.getElementById('outParalelos').textContent = paralelos + ' x ' + formatPt(finalSec,0) + ' mm²';
+}
+
+['modo_corrente','tensao','corrente','carga','unidade_carga','fator_potencia','distancia','queda_max','material','isolacao','metodo_instalacao','temperatura','circuitos','secao_max','permite_secao_menor'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => { if (id === 'carga' || id === 'unidade_carga' || id === 'tensao' || id === 'modo_corrente' || id === 'fator_potencia') suggestCurrentFromLoad(); calcCable(); }); if (el) el.addEventListener('change', () => { if (id === 'carga' || id === 'unidade_carga' || id === 'tensao' || id === 'modo_corrente' || id === 'fator_potencia') suggestCurrentFromLoad(); calcCable(); }); });
+updateMethodText(); calcCable();
+</script>
+{% endblock %}
